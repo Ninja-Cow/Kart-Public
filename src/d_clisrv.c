@@ -1413,13 +1413,12 @@ static void
 CopyCaretColors (char *p, const char *s, int n)
 {
 	char *t;
-	int   m;
 	int   c;
 	if (!n)
 		return;
 	while (( t = strchr(s, '^') ))
 	{
-		m = ( t - s );
+		int m = ( t - s );
 
 		if (m >= n)
 		{
@@ -1707,8 +1706,8 @@ static boolean SV_SendServerConfig(INT32 node)
 #ifdef DEBUGFILE
 		if (debugfile)
 		{
-			fprintf(debugfile, "ServerConfig Packet about to be sent, size of packet:%s to node:%d\n",
-				sizeu1(len), node);
+			fprintf(debugfile, "ServerConfig Packet about to be sent, size of packet:%s to node:%li\n",
+				sizeu1(len), (INT64)node);
 		}
 #endif
 
@@ -1831,14 +1830,12 @@ static void SV_SavedGame(void)
 	length = save_p - savebuffer;
 	if (length > SAVEGAMESIZE)
 	{
-		free(savebuffer);
-		save_p = NULL;
 		I_Error("Savegame buffer overrun");
 	}
-
-	// then save it!
-	if (!FIL_WriteFile(tmpsave, savebuffer, length))
+	else if (!FIL_WriteFile(tmpsave, savebuffer, length)) // then save it!
+	{
 		CONS_Printf(M_GetText("Didn't save %s for netgame"), tmpsave);
+	}
 
 	free(savebuffer);
 	save_p = NULL;
@@ -2239,11 +2236,11 @@ static boolean CL_FinishedFileList(void)
 static boolean CL_ServerConnectionSearchTicker(tic_t *asksent)
 {
 #ifndef NONET
-	INT32 i;
-
 	// serverlist is updated by GetPacket function
 	if (serverlistcount > 0)
 	{
+		INT32 i;
+
 		// this can be a responce to our broadcast request
 		if (servernode == -1 || servernode >= MAXNETNODES)
 		{
@@ -2650,7 +2647,7 @@ static banreason_t *reasonhead = NULL; //1st entry, use next
 static void Command_ShowBan(void) //Print out ban list
 {
 	size_t i;
-	const char *address, *mask;
+	const char *address;
 	banreason_t *reasonlist = reasonhead;
 
 	if (I_GetBanAddress)
@@ -2660,6 +2657,7 @@ static void Command_ShowBan(void) //Print out ban list
 
 	for (i = 0;(address = I_GetBanAddress(i)) != NULL;i++)
 	{
+		const char* mask;
 		if (!I_GetBanMask || (mask = I_GetBanMask(i)) == NULL)
 			CONS_Printf("%s: %s ", sizeu1(i+1), address);
 		else
@@ -2682,7 +2680,7 @@ void D_SaveBan(void)
 	FILE *f;
 	size_t i;
 	banreason_t *reasonlist = reasonhead;
-	const char *address, *mask;
+	const char *address;
 
 	if (!reasonhead)
 		return;
@@ -2697,6 +2695,7 @@ void D_SaveBan(void)
 
 	for (i = 0;(address = I_GetBanAddress(i)) != NULL;i++)
 	{
+		const char* mask;
 		if (!I_GetBanMask || (mask = I_GetBanMask(i)) == NULL)
 			fprintf(f, "%s 0", address);
 		else
@@ -2754,7 +2753,6 @@ static void Ban_Load_File(boolean warning)
 {
 	FILE *f;
 	size_t i;
-	const char *address, *mask;
 	char buffer[MAX_WADPATH];
 
 	f = fopen(va("%s"PATHSEP"%s", srb2home, "ban.txt"), "r");
@@ -2776,8 +2774,8 @@ static void Ban_Load_File(boolean warning)
 
 	for (i=0; fgets(buffer, (int)sizeof(buffer), f); i++)
 	{
-		address = strtok(buffer, " \t\r\n");
-		mask = strtok(NULL, " \t\r\n");
+		const char* address = strtok(buffer, " \t\r\n");
+		const char* mask = strtok(NULL, " \t\r\n");
 
 		I_SetBanAddress(address, mask);
 
@@ -2905,7 +2903,7 @@ void CL_RemovePlayer(INT32 playernum, INT32 reason)
 		INT32 node = playernode[playernum];
 		//playerpernode[node] = 0; // It'd be better to remove them all at once, but ghosting happened, so continue to let CL_RemovePlayer do it one-by-one
 		playerpernode[node]--;
-		if (playerpernode[node] <= 0)
+		if (playerpernode[node] == 0)
 		{
 			// If a resynch was in progress, well, it no longer needs to be.
 			SV_InitResynchVars(node);
@@ -2968,7 +2966,7 @@ void CL_RemovePlayer(INT32 playernum, INT32 reason)
 		doomcom->numslots--;
 
 	// Reset the name
-	sprintf(player_names[playernum], "Player %d", playernum+1);
+	sprintf(player_names[playernum], "Player %li", (INT64)(playernum+1));
 
 	player_name_changes[playernum] = 0;
 
@@ -3140,10 +3138,11 @@ static void Command_Ban(void)
 		XBOXSTATIC UINT8 buf[3 + MAX_REASONLENGTH];
 		UINT8 *p = buf;
 		const SINT8 pn = nametonum(COM_Argv(1));
-		const INT32 node = playernode[(INT32)pn];
 
 		if (pn == -1 || pn == 0)
 			return;
+
+		const INT32 node = playernode[(INT32)pn];
 
 		WRITEUINT8(p, pn);
 
@@ -3710,7 +3709,7 @@ void SV_ResetServer(void)
 #endif
 		playeringame[i] = false;
 		playernode[i] = UINT8_MAX;
-		sprintf(player_names[i], "Player %d", i + 1);
+		sprintf(player_names[i], "Player %li", (INT64)(i + 1));
 		adminplayers[i] = -1; // Populate the entire adminplayers array with -1.
 	}
 
@@ -3820,7 +3819,6 @@ static void Got_AddPlayer(UINT8 **p, INT32 playernum)
 {
 	INT16 node, newplayernum;
 	UINT8 splitscreenplayer = 0;
-	UINT8 i;
 
 	if (playernum != serverplayer && !IsPlayerAdmin(playernum))
 	{
@@ -3865,7 +3863,7 @@ static void Got_AddPlayer(UINT8 **p, INT32 playernum)
 		else
 		{
 			consoleplayer = newplayernum;
-			for (i = 0; i < MAXSPLITSCREENPLAYERS; i++)
+			for (UINT8 i = 0; i < MAXSPLITSCREENPLAYERS; i++)
 				displayplayers[i] = newplayernum;
 			DEBFILE("spawning me\n");
 		}
@@ -4554,7 +4552,7 @@ static void HandlePacketFromPlayer(SINT8 node)
 {FILESTAMP
 	XBOXSTATIC INT32 netconsole;
 	XBOXSTATIC tic_t realend, realstart;
-	XBOXSTATIC UINT8 *pak, *txtpak, numtxtpak;
+	XBOXSTATIC UINT8 *txtpak;
 FILESTAMP
 
 	txtpak = NULL;
@@ -4906,7 +4904,7 @@ FILESTAMP
 			if (realstart <= neededtic && realend > neededtic)
 			{
 				tic_t i, j;
-				pak = (UINT8 *)&netbuffer->u.serverpak.cmds;
+				XBOXSTATIC UINT8* pak = (UINT8 *)&netbuffer->u.serverpak.cmds;
 
 				for (i = realstart; i < realend; i++)
 				{
@@ -4918,7 +4916,7 @@ FILESTAMP
 						netbuffer->u.serverpak.numslots*sizeof (ticcmd_t));
 
 					// copy the textcmds
-					numtxtpak = *txtpak++;
+					XBOXSTATIC UINT8* numtxtpak = *txtpak++;
 					for (j = 0; j < numtxtpak; j++)
 					{
 						INT32 k = *txtpak++; // playernum
@@ -5023,15 +5021,13 @@ FILESTAMP
   *
   */
 static void GetPackets(void)
-{FILESTAMP
-	XBOXSTATIC SINT8 node; // The packet sender
-FILESTAMP
-
+{
 	player_joining = false;
 
 	while (HGetPacket())
 	{
-		node = (SINT8)doomcom->remotenode;
+		// The packet sender
+		XBOXSTATIC SINT8 node = (SINT8)doomcom->remotenode;
 
 		if (netbuffer->packettype == PT_CLIENTJOIN && server && !levelloading)
 		{
@@ -5086,7 +5082,6 @@ static INT16 Consistancy(void)
 	UINT32 ret = 0;
 #ifdef MOBJCONSISTANCY
 	thinker_t *th;
-	mobj_t *mo;
 #endif
 
 	DEBFILE(va("TIC %u ", gametic));
@@ -5122,7 +5117,7 @@ static INT16 Consistancy(void)
 			if (th->function.acp1 != (actionf_p1)P_MobjThinker)
 				continue;
 
-			mo = (mobj_t *)th;
+			mobj_t *mo = (mobj_t *)th;
 
 			if (mo->flags & (MF_SPECIAL | MF_SOLID | MF_PUSHABLE | MF_BOSS | MF_MISSILE | MF_SPRING | MF_MONITOR | MF_FIRE | MF_ENEMY | MF_PAIN | MF_STICKY))
 			{
@@ -5258,7 +5253,6 @@ static void SV_SendServerKeepAlive(void)
 // send the client packet to the server
 static void CL_SendClientCmd(void)
 {
-	size_t packetsize = 0;
 	boolean mis = false;
 
 	netbuffer->packettype = PT_CLIENTCMD;
@@ -5276,12 +5270,12 @@ static void CL_SendClientCmd(void)
 	{
 		// Send PT_NODEKEEPALIVE packet
 		netbuffer->packettype = (mis ? PT_NODEKEEPALIVEMIS : PT_NODEKEEPALIVE);
-		packetsize = sizeof (clientcmd_pak) - sizeof (ticcmd_t) - sizeof (INT16);
+		size_t packetsize = sizeof (clientcmd_pak) - sizeof (ticcmd_t) - sizeof (INT16);
 		HSendPacket(servernode, false, 0, packetsize);
 	}
 	else if (gamestate != GS_NULL)
 	{
-		packetsize = sizeof (clientcmd_pak);
+		size_t packetsize = sizeof (clientcmd_pak);
 		G_MoveTiccmd(&netbuffer->u.clientpak.cmd, &localcmds, 1);
 		netbuffer->u.clientpak.consistancy = SHORT(consistancy[gametic%TICQUEUE]);
 
@@ -5603,8 +5597,8 @@ boolean TryRunTics(tic_t realtics)
 	{
 		//SoM: 3/30/2000: Need long INT32 in the format string for args 4 & 5.
 		//Shut up stupid warning!
-		fprintf(debugfile, "------------ Tryruntic: REAL:%d NEED:%d GAME:%d LOAD: %d\n",
-			realtics, neededtic, gametic, debugload);
+		fprintf(debugfile, "------------ Tryruntic: REAL:%lu NEED:%lu GAME:%lu LOAD: %li\n",
+			(UINT64)realtics, (UINT64)neededtic, (UINT64)gametic, (INT64)debugload);
 		debugload = 100000;
 	}
 #endif
@@ -5666,7 +5660,6 @@ static inline void PingUpdate(void)
 {
 	INT32 i;
 	boolean laggers[MAXPLAYERS];
-	UINT8 numlaggers = 0;
 	memset(laggers, 0, sizeof(boolean) * MAXPLAYERS);
 
 	netbuffer->packettype = PT_PING;
@@ -5674,6 +5667,7 @@ static inline void PingUpdate(void)
 	//check for ping limit breakage.
 	if (cv_maxping.value)
 	{
+		UINT8 numlaggers = 0;
 		for (i = 1; i < MAXPLAYERS; i++)
 		{
 			if (playeringame[i] && (realpingtable[i] / pingmeasurecount > (unsigned)cv_maxping.value))
@@ -5740,13 +5734,12 @@ static tic_t gametime = 0;
 
 static void UpdatePingTable(void)
 {
-	INT32 i;
 	if (server)
 	{
 		if (netgame && !(gametime % 35))	// update once per second.
 			PingUpdate();
 		// update node latency values so we can take an average later.
-		for (i = 0; i < MAXPLAYERS; i++)
+		for (INT32 i = 0; i < MAXPLAYERS; i++)
 			if (playeringame[i])
 				realpingtable[i] += (INT32)(GetLag(playernode[i]) * (1000.00f/TICRATE)); // TicsToMilliseconds can't handle pings over 1000ms lol
 		pingmeasurecount++;
@@ -5756,9 +5749,8 @@ static void UpdatePingTable(void)
 // Handle timeouts to prevent definitive freezes from happenning
 static void HandleNodeTimeouts(void)
 {
-	INT32 i;
 	if (server)
-		for (i = 1; i < MAXNETNODES; i++)
+		for (INT32 i = 1; i < MAXNETNODES; i++)
 			if (nodeingame[i] && freezetimeout[i] < I_GetTime())
 				Net_ConnectionTimeout(i);
 }

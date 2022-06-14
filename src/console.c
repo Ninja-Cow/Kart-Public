@@ -271,7 +271,7 @@ UINT8 *consolebgmap = NULL;
 
 void CON_SetupBackColormap(void)
 {
-	UINT16 i, palsum;
+	UINT16 i;
 	UINT8 j, palindex;
 	UINT8 *pal = W_CacheLumpName(GetPalette(), PU_CACHE);
 	INT32 shift = 6;
@@ -308,7 +308,7 @@ void CON_SetupBackColormap(void)
 	// setup background colormap
 	for (i = 0, j = 0; i < 768; i += 3, j++)
 	{
-		palsum = (pal[i] + pal[i+1] + pal[i+2]) >> shift;
+		UINT16 palsum = (pal[i] + pal[i+1] + pal[i+2]) >> shift;
 		consolebgmap[j] = (UINT8)(palindex - palsum);
 	}
 }
@@ -479,7 +479,7 @@ static void CON_InputInit(void)
 //
 static void CON_RecalcSize(void)
 {
-	size_t conw, oldcon_width, oldnumlines, i, oldcon_cy;
+	size_t conw, oldcon_width, oldnumlines, oldcon_cy;
 	char *tmp_buffer;
 	char *string;
 
@@ -559,7 +559,7 @@ static void CON_RecalcSize(void)
 	// re-arrange console text buffer to keep text
 	if (oldcon_width) // not the first time
 	{
-		for (i = oldcon_cy + 1; i < oldcon_cy + oldnumlines; i++)
+		for (size_t i = oldcon_cy + 1; i < oldcon_cy + oldnumlines; i++)
 		{
 			if (tmp_buffer[(i%oldnumlines)*oldcon_width])
 			{
@@ -1695,7 +1695,6 @@ static void CON_DrawHudlines(void)
 //
 static void CON_DrawConsole(void)
 {
-	UINT8 *p;
 	size_t i;
 	INT32 y;
 	INT32 charflags = 0;
@@ -1745,7 +1744,7 @@ static void CON_DrawConsole(void)
 		INT32 x;
 		size_t c;
 
-		p = (UINT8 *)&con_buffer[((i > 0 ? i : 0)%con_totallines)*con_width];
+		UINT8* p = (UINT8 *)&con_buffer[((i > 0 ? i : 0)%con_totallines)*con_width];
 
 		for (c = 0, x = charwidth; c < con_width; c++, x += charwidth, p++)
 		{

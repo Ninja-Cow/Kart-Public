@@ -200,13 +200,11 @@ boolean capslock = 0;	// gee i wonder what this does.
 //
 void D_ProcessEvents(void)
 {
-	event_t *ev;
-
 	boolean eaten;
 
 	for (; eventtail != eventhead; eventtail = (eventtail+1) & (MAXEVENTS-1))
 	{
-		ev = &events[eventtail];
+		event_t *ev = &events[eventtail];
 
 		// Screenshots over everything so that they can be taken anywhere.
 		if (M_ScreenshotResponder(ev))
@@ -275,7 +273,6 @@ static void D_Display(void)
 	boolean forcerefresh = false;
 	static boolean wipe = false;
 	INT32 wipedefindex = 0;
-	UINT8 i;
 
 	if (!dedicated)
 	{
@@ -434,7 +431,7 @@ static void D_Display(void)
 		{
 			R_ApplyLevelInterpolators(R_UsingFrameInterpolation() ? rendertimefrac : FRACUNIT);
 
-			for (i = 0; i <= splitscreen; i++)
+			for (UINT8 i = 0; i <= splitscreen; i++)
 			{
 				if (players[displayplayers[i]].mo || players[displayplayers[i]].playerstate == PST_DEAD)
 				{
@@ -500,7 +497,7 @@ static void D_Display(void)
 
 			if (rendermode == render_soft)
 			{
-				for (i = 0; i <= splitscreen; i++)
+				for (UINT8 i = 0; i <= splitscreen; i++)
 				{
 					if (postimgtype[i])
 						V_DoPostProcessor(i, postimgtype[i], postimgparam[i]);
@@ -625,12 +622,8 @@ tic_t rendergametic;
 
 void D_SRB2Loop(void)
 {
-	tic_t entertic = 0, oldentertics = 0, realtics = 0, rendertimeout = INFTICS;
+	tic_t oldentertics = 0, rendertimeout = INFTICS;
 	double deltatics = 0.0;
-	double deltasecs = 0.0;
-
-	boolean interp = false;
-	boolean doDisplay = false;
 
 	if (dedicated)
 		server = true;
@@ -672,7 +665,6 @@ void D_SRB2Loop(void)
 		// capbudget is the minimum precise_t duration of a single loop iteration
 		precise_t capbudget;
 		precise_t enterprecise = I_GetPreciseTime();
-		precise_t finishprecise = enterprecise;
 
 		{
 			// Casting the return value of a function is bad practice (apparently)
@@ -689,8 +681,8 @@ void D_SRB2Loop(void)
 		}
 
 		// get real tics
-		entertic = I_GetTime();
-		realtics = entertic - oldentertics;
+		tic_t entertic = I_GetTime();
+		tic_t realtics = entertic - oldentertics;
 		oldentertics = entertic;
 
 		if (demo.playback && gamestate == GS_LEVEL)
@@ -705,8 +697,8 @@ void D_SRB2Loop(void)
 				debugload--;
 #endif
 
-		interp = R_UsingFrameInterpolation() && !dedicated;
-		doDisplay = false;
+		boolean interp = R_UsingFrameInterpolation() && !dedicated;
+		boolean doDisplay = false;
 
 #ifdef HW3SOUND
 		HW3S_BeginFrameUpdate();
@@ -795,9 +787,10 @@ void D_SRB2Loop(void)
 #endif
 
 		// Fully completed frame made.
-		finishprecise = I_GetPreciseTime();
+		precise_t finishprecise;
 		if (!singletics)
 		{
+			finishprecise = I_GetPreciseTime();
 			INT64 elapsed = (INT64)(finishprecise - enterprecise);
 			if (elapsed > 0 && (INT64)capbudget > elapsed)
 			{
@@ -806,7 +799,7 @@ void D_SRB2Loop(void)
 		}
 		// Capture the time once more to get the real delta time.
 		finishprecise = I_GetPreciseTime();
-		deltasecs = (double)((INT64)(finishprecise - enterprecise)) / I_GetPrecisePrecision();
+		double deltasecs = (double)((INT64)(finishprecise - enterprecise)) / I_GetPrecisePrecision();
 		deltatics = deltasecs * NEWTICRATE;
 	}
 }
@@ -944,7 +937,6 @@ static void IdentifyVersion(void)
 #if (defined (__unix__) && !defined (MSDOS)) || defined (UNIXCOMMON) || defined (HAVE_SDL)
 	// change to the directory where 'srb2.srb' is found
 	srb2waddir = I_LocateWad();
-#endif
 
 	// get the current directory (possible problem on NT with "." as current dir)
 	if (srb2waddir)
@@ -952,6 +944,7 @@ static void IdentifyVersion(void)
 		strlcpy(srb2path,srb2waddir,sizeof (srb2path));
 	}
 	else
+#endif
 	{
 #if !defined(_WIN32_WCE) && !defined(_PS3)
 		if (getcwd(srb2path, 256) != NULL)

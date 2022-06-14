@@ -176,16 +176,14 @@ COM_BufTicker(void)
 void COM_BufExecute(void)
 {
 	size_t i;
-	char *ptext;
 	char line[1024] = "";
-	INT32 quotes;
 
 	while (com_text.cursize)
 	{
 		// find a '\n' or; line break
-		ptext = (char *)com_text.data;
+		char* ptext = (char *)com_text.data;
 
-		quotes = 0;
+		INT32 quotes = 0;
 		for (i = 0; i < com_text.cursize; i++)
 		{
 			if (ptext[i] == '\"' && !quotes && i > 0 && ptext[i-1] != ' ') // Malformed command
@@ -233,14 +231,12 @@ void COM_BufExecute(void)
   */
 void COM_ImmedExecute(const char *ptext)
 {
-	size_t i = 0, j = 0;
+	size_t i = 0, j;
 	char line[1024] = "";
-	INT32 quotes;
 
 	while (i < strlen(ptext))
 	{
-
-		quotes = 0;
+		INT32 quotes = 0;
 		for (j = 0; i < strlen(ptext); i++,j++)
 		{
 			if (ptext[i] == '\"' && !quotes && i > 0 && ptext[i-1] != ' ') // Malformed command
@@ -654,8 +650,8 @@ static void COM_CEchoFlags_f(void)
 	{
 		const char *arg = COM_Argv(1);
 
-		if (arg[0] && arg[0] == '0' &&
-			arg[1] && arg[1] == 'x') // Use hexadecimal!
+		if (arg[0] == '0' &&
+			arg[1] == 'x') // Use hexadecimal!
 			HU_SetCEchoFlags(axtoi(arg+2));
 		else
 			HU_SetCEchoFlags(atoi(arg));
@@ -677,7 +673,6 @@ static void COM_CEchoDuration_f(void)
 static void COM_Exec_f(void)
 {
 	UINT8 *buf = NULL;
-	char filename[256];
 
 	if (COM_Argc() < 2 || COM_Argc() > 3)
 	{
@@ -693,6 +688,7 @@ static void COM_Exec_f(void)
 	{
 		// Now try by searching the file path
 		// filename is modified with the full found path
+		char filename[256];
 		strcpy(filename, COM_Argv(1));
 		if (findfile(filename, NULL, true) != FS_NOTFOUND)
 			FIL_ReadFile(filename, &buf);
@@ -1577,7 +1573,7 @@ void CV_StealthSetValue(consvar_t *var, INT32 value)
 {
 	char val[32];
 
-	sprintf(val, "%d", value);
+	sprintf(val, "%li", (signed long)value);
 	CV_SetCVar(var, val, true);
 }
 
@@ -1598,7 +1594,7 @@ void CV_SetValue(consvar_t *var, INT32 value)
 {
 	char val[32];
 
-	sprintf(val, "%d", value);
+	sprintf(val, "%li", (signed long)value);
 	CV_SetCVar(var, val, false);
 }
 
@@ -1614,7 +1610,7 @@ void CV_SetValue(consvar_t *var, INT32 value)
   */
 void CV_AddValue(consvar_t *var, INT32 increment)
 {
-	INT32 newvalue, max;
+	INT32 newvalue;
 
 	if (!increment)
 		return;
@@ -1626,6 +1622,7 @@ void CV_AddValue(consvar_t *var, INT32 increment)
 
 	if (var->PossibleValue)
 	{
+		INT32 max;
 		if (var == &cv_nextmap)
 		{
 			// Special case for the nextmap variable, used only directly from the menu
@@ -1670,7 +1667,7 @@ void CV_AddValue(consvar_t *var, INT32 increment)
 
 			if (newvalue < var->PossibleValue[MINVAL].value || newvalue > var->PossibleValue[MAXVAL].value)
 			{
-				INT32 currentindice = -1, newindice;
+				INT32 currentindice = -1;
 				for (max = MAXVAL+1; var->PossibleValue[max].strvalue; max++)
 				{
 					if (var->PossibleValue[max].value == newvalue)
@@ -1685,6 +1682,7 @@ void CV_AddValue(consvar_t *var, INT32 increment)
 
 				if (increment)
 				{
+					INT32 newindice;
 					increment = (increment > 0) ? 1 : -1;
 					if (currentindice == -1 && max != MAXVAL+1)
 						newindice = ((increment > 0) ? MAXVAL : max) + increment;
@@ -1977,7 +1975,7 @@ void CV_SaveVariables(FILE *f)
 
 			// Silly hack for Min/Max vars
 			if (!strcmp(cvar->string, "MAX") || !strcmp(cvar->string, "MIN"))
-				sprintf(stringtowrite, "%d", cvar->value);
+				sprintf(stringtowrite, "%li", (signed long)cvar->value);
 			else
 				strcpy(stringtowrite, cvar->string);
 

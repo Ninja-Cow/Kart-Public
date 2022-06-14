@@ -115,11 +115,6 @@ typedef struct
 	mpoint_t a, b;
 } mline_t;
 
-typedef struct
-{
-	fixed_t slp, islp;
-} islope_t;
-
 //
 // The vector graphics for the automap.
 // A line drawing of the player pointing right,
@@ -737,14 +732,13 @@ static void AM_drawFline_soft(const fline_t *fl, INT32 color)
 	INT32 x, y, dx, dy, sx, sy, ax, ay, d;
 
 #ifdef _DEBUG
-	static INT32 num = 0;
-
 	// For debugging only
 	if (fl->a.x < 0 || fl->a.x >= f_w
 	|| fl->a.y < 0 || fl->a.y >= f_h
 	|| fl->b.x < 0 || fl->b.x >= f_w
 	|| fl->b.y < 0 || fl->b.y >= f_h)
 	{
+		static INT32 num = 0;
 		CONS_Debug(DBG_RENDER, "line clipping problem %d\n", num++);
 		return;
 	}
